@@ -28,6 +28,8 @@ namespace Core
             // nothing needed here
         }
 
+        public bool UnityLogging = false;
+
         public LoggingLevelSwitch loggingLevel = null;
 
         /// <summary>
@@ -54,11 +56,7 @@ namespace Core
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.ControlledBy(loggingLevel)
                 .WriteTo.File(filename)
-                #if UNITY_EDITOR
-                .WriteTo.UnitySink()
-                #else
 				.WriteTo.Console()
-                #endif
                 .CreateLogger();
 
             Log.Information("logging service started...");

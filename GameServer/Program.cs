@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Core.Service;
 using GNetworking;
 using Lidgren.Network;
@@ -59,12 +60,53 @@ namespace GameServer
             // register network messages which the server can handle
             server.NetworkPipe.On("say", SayMessageReceived);
 
-            // wait for key to exit
-            Log.Information("Press any key and enter or just press enter to exit.");
-            Console.ReadLine();
+
+            Thread server_thread = new Thread(UpdateServer);
+            server_thread.Start();
+
+            Console.WriteLine("type quit and press enter to exit");
+
+            while (true)
+            {
+                String input = Console.ReadLine();
+
+                if (input == "exit" || input == "quit")
+                {
+                    lock (close_server)
+                    {
+                        close_server = true;
+                        break;
+                    }
+                }
+            }
 
             // shutdown properly and exit
             GameServiceManager.Shutdown();
+        }
+
+        public static object close_server = false;
+        public static void UpdateServer()
+        {
+
+            // wait until exit recieved from other thread
+            while (true)
+            {
+                GameServiceManager.UpdateServices();
+
+                // wait 
+                System.Threading.Thread.Sleep(1000 / 60);
+
+                // prevent deadlocking
+                lock (close_server)
+                {
+                    if ((bool)close_server)
+                    {
+                        // non async
+                        break;
+                    }
+                }
+            }
+
         }
     }
 }
