@@ -62,7 +62,6 @@ namespace Core
                 .CreateLogger();
 
             Log.Information("logging service started...");
-            
         }
     }
 }

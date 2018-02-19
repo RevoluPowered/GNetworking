@@ -1,46 +1,25 @@
-﻿using System.Diagnostics;
-
-namespace Core.Service
+﻿namespace Core.Service
 {
     using System;
     using System.Collections.Generic;
     using Serilog;
-    /// <summary>
-    /// Game service manager
-    /// </summary>
-    /// <inheritdoc cref="StaticInstance{T}"/>
-    public class GameServiceManager
+
+    public static class GameServiceManager
     {
         /// <summary>
-        /// Initializes a service manager
+        /// The active service list
         /// </summary>
-        public GameServiceManager()
+        public static List<GameService> Services { get; private set; } = new List<GameService>
         {
-            this.Services = new List<GameService>
-            {
-                // logging service is always available in games
-                new Logging()
-            };
-        }
-
-        #region singleton
-        public static readonly GameServiceManager Instance = new GameServiceManager();
+            // we always have a logging service
+            new Logging()
+        };
         
         /// <summary>
-        /// Shutdown the service manager - prep for quit
-        /// </summary>
-        public static void Shutdown()
-        {
-            // stop and shutdown
-            Instance.StopServices();
-        }
-        #endregion
-
-        /// <summary>
-        /// Register the game service to the service manager
+        /// Assigns the game service to the service manager
         /// </summary>
         /// <param name="service">The service which needs added</param>
-        public T RegisterService<T>(T service) where T: GameService
+        public static T RegisterService<T>(T service) where T: GameService
         {
             if (Services.Contains(service))
             {
@@ -55,7 +34,6 @@ namespace Core.Service
             return service;
         }
 
-
         // This shows you how this works:
         // How unity GetComponent<T> works.
         // public T GetComponent<T>() where T : Component { return this.GetComponent(typeof(T)) as T; }
@@ -65,7 +43,7 @@ namespace Core.Service
         /// </summary>
         /// <typeparam name="T">The service type</typeparam>
         /// <returns>A service you can start and stop</returns>
-        public T Service<T>() where T : GameService
+        public static T GetService<T>() where T : GameService
         {
             Log.Debug("data expected: {type}", typeof(T));
             foreach (var sv in Services)
@@ -86,20 +64,9 @@ namespace Core.Service
         }
 
         /// <summary>
-        /// Returns service of specified type
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public static T GetService<T>() where T : GameService
-        {
-            return Instance.Service<T>();
-        }
-
-
-        /// <summary>
         /// Called to update services
         /// </summary>
-        public void UpdateServices()
+        public static void UpdateServices()
         {
             foreach (var service in Services)
             {
@@ -114,7 +81,7 @@ namespace Core.Service
         /// <param name="name">name of the service</param>
         /// <param name="start">the state of the service</param>
         /// <returns></returns>
-        private bool ServiceState(string name, bool start)
+        private static bool ServiceState(string name, bool start)
         {
             foreach (var service in Services)
             {
@@ -141,7 +108,7 @@ namespace Core.Service
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        public bool StartService(string name)
+        public static bool StartService(string name)
         {
             return ServiceState(name, true);
         }
@@ -151,7 +118,7 @@ namespace Core.Service
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        public bool StopService(string name)
+        public static bool StopService(string name)
         {
             return ServiceState(name, false);
         }
@@ -159,7 +126,7 @@ namespace Core.Service
         /// <summary>
         /// Starts all services which aren't running
         /// </summary>
-        public void StartServices()
+        public static void StartServices()
         {
             foreach (var service in Services)
             {
@@ -177,7 +144,7 @@ namespace Core.Service
         /// <summary>
         /// Stop all the game services
         /// </summary>
-        public void StopServices()
+        public static void StopServices()
         {
             foreach (var service in Services)
             {
@@ -193,8 +160,12 @@ namespace Core.Service
         }
 
         /// <summary>
-        /// The active service list
+        /// Shutdown the service manager - prep for quit
         /// </summary>
-        public List<GameService> Services { get; private set; }
+        public static void Shutdown()
+        {
+            // stop and shutdown
+            StopServices();
+        }
     }
 }

@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Core;
 using Core.Service;
 using GNetworking;
 using Lidgren.Network;
@@ -35,6 +32,7 @@ namespace GameServer
         /// <param name="msg"></param>
         public static bool SayMessageReceived(string name, NetConnection sender, NetPipeMessage msg)
         {
+            // Retrieve the message
             var message = msg.GetMessage<ChatMessage>();
 
             // this can be null if someone is sending data which is erroneous or they're sending the wrong arguments
@@ -42,7 +40,6 @@ namespace GameServer
 
             // process message and send to clients which should recieve the message
             var server = GameServiceManager.GetService<NetworkServer>();
-
             var messagePipe = server.NetworkPipe;
 
             // todo: add other channel support
@@ -53,21 +50,21 @@ namespace GameServer
 
         public static void Main(string[] args)
         {
-            var serviceManager = new GameServiceManager();
-            var server = serviceManager.RegisterService( new NetworkServer(27015, 20));
+            // register our server service, and reference it
+            var server = GameServiceManager.RegisterService( new NetworkServer(27015, 20));
 
             // start logging and network server service
-            serviceManager.StartServices();
+            GameServiceManager.StartServices();
 
             // register network messages which the server can handle
             server.NetworkPipe.On("say", SayMessageReceived);
 
             // wait for key to exit
-            Log.Information("Press any key and enter to exit.");
+            Log.Information("Press any key and enter or just press enter to exit.");
             Console.ReadLine();
 
             // shutdown properly and exit
-            serviceManager.StopServices();
+            GameServiceManager.Shutdown();
         }
     }
 }
