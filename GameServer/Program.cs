@@ -1,65 +1,28 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using Core.Service;
+
+// Gordon's Networking layer
 using GNetworking;
-using Lidgren.Network;
-using Serilog;
+using GNetworking.Managers;
 
 namespace GameServer
 {
-    /// <summary>
-    /// extend existing global chat message to add channel support
-    /// channel -1 is global chat, anything else is handled as a direct message
-    /// </summary>
-    public class ChatMessage : ChatEvent
-    {
-        public ChatMessage(int clientId, string message, int channel = 0) : base(clientId, message)
-        {
-
-        }
-
-        public int Channel = -1;
-    }
-
     class Program
     {
-        /// <summary>
-        /// Say Message Handler
-        /// </summary>
-        /// <param name="name"></param>
-        /// <param name="sender"></param>
-        /// <param name="msg"></param>
-        public static bool SayMessageReceived(string name, NetConnection sender, NetPipeMessage msg)
-        {
-            // Retrieve the message
-            var message = msg.GetMessage<ChatMessage>();
-
-            // this can be null if someone is sending data which is erroneous or they're sending the wrong arguments
-            if (message == null) return false;
-
-            // process message and send to clients which should recieve the message
-            var server = GameServiceManager.GetService<NetworkServer>();
-            var messagePipe = server.NetworkPipe;
-
-            // todo: add other channel support
-            messagePipe.Send("server-message", message);
-
-            return true;
-        }
-
         public static void Main(string[] args)
         {
-            // register our server service, and reference it
+            // create server socket handler
             var server = GameServiceManager.RegisterService( new NetworkServer(27015, 20));
+
+            // create chat system handler
+            var chatSystem = GameServiceManager.RegisterService(new ChatManager());
 
             // start logging and network server service
             GameServiceManager.StartServices();
 
             // register network messages which the server can handle
-            server.NetworkPipe.On("say", SayMessageReceived);
-
+            server.NetworkPipe.On("say", ChatManager.SayMessageReceived);
 
             Thread server_thread = new Thread(UpdateServer);
             server_thread.Start();
@@ -101,7 +64,6 @@ namespace GameServer
                 {
                     if ((bool)close_server)
                     {
-                        // non async
                         break;
                     }
                 }

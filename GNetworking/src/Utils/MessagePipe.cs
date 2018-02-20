@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 namespace GNetworking
 {
     /// <summary>
-    /// Internal Message Pipe System
+    /// Internal Text Pipe System
     /// </summary>
     public class MessagePipe 
     {
@@ -72,8 +72,15 @@ namespace GNetworking
         /// <returns>outgoing message</returns>
         protected NetOutgoingMessage GenerateMessage<T>(NetPeer socket, string name, T message) where T: BaseMessage
         {
+            Log.Information("message: {msg}", message);
+            // return the net message 
+            return GenerateMessage(socket, name, new NetPipeMessage(name, message));
+        }
+
+        protected NetOutgoingMessage GenerateMessage(NetPeer socket, string name, NetPipeMessage message)
+        {
             // convert it to json and then create the message
-            var messageJson = JsonConvert.SerializeObject( new NetPipeMessage(name, message), Formatting.None);
+            var messageJson = JsonConvert.SerializeObject( message, Formatting.None);
 
             // return the net message 
             return socket.CreateMessage(messageJson);
@@ -95,6 +102,7 @@ namespace GNetworking
             }
             else
             {
+                // todo: make this not use NetPipeMessage.Name - can cause issues when you want to send messages from one pipe to another.
                 Call(message.Name, sender, message);
             }
         }

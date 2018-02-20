@@ -34,6 +34,16 @@ namespace GNetworking
         /// </summary>
 	    public ServerMessagePipe NetworkPipe { get; private set; }
 
+	    /// <summary>
+	    /// When the client connection is properly connected to the server this is called
+	    /// </summary>
+	    public Action<NetConnection> OnClientConnectionSuccessful;
+
+        /// <summary>
+        /// When the client is disconnected this action is called.
+        /// </summary>
+        public Action<NetConnection> OnClientDisconnected;
+
         /// <summary>
         /// Enable NAT discovery
         /// </summary>
@@ -106,7 +116,7 @@ namespace GNetworking
         /// </summary>
         /// <param name="message"></param>
         /// <param name="pipe"></param>
-        protected static void ProcessMessage(NetIncomingMessage message, MessagePipe pipe)
+        protected void ProcessMessage(NetIncomingMessage message, MessagePipe pipe)
         {
             switch (message.MessageType)
             {
@@ -144,7 +154,7 @@ namespace GNetworking
             }
         }
 
-	    protected static void UpdateServerConnectionState(
+	    protected void UpdateServerConnectionState(
 	        NetConnectionStatus s,
 	        NetIncomingMessage message,
 	        MessagePipe pipe)
@@ -153,11 +163,11 @@ namespace GNetworking
 	        {
 	            case NetConnectionStatus.Connected:
 	                Log.Debug("player connected: {connection}", message.SenderConnection);
-	                pipe.Call("player-connected", message.SenderConnection, null);
+	                OnClientConnectionSuccessful?.Invoke( message.SenderConnection );
 	                break;
 	            case NetConnectionStatus.Disconnected:
 	                Log.Debug("player disconnected: {connection}", message.SenderConnection);
-	                pipe.Call("player-disconnect", message.SenderConnection, null);
+                    OnClientDisconnected?.Invoke( message.SenderConnection );
 	                break;
 	            case NetConnectionStatus.Disconnecting:
 	            case NetConnectionStatus.InitiatedConnect:

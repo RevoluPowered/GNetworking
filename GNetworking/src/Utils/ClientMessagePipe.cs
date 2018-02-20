@@ -12,7 +12,7 @@ using Serilog;
 namespace GNetworking
 {
     /// <summary>
-    /// Client Message Pipe system
+    /// Client Text Pipe system
     /// Used to send messages using the relevant NetworkSocket to the Server
     /// Simplified for easy usage.
     /// </summary>

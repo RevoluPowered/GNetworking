@@ -50,15 +50,12 @@
             {
                 if (sv.GetType() == typeof(T))
                 {
+                    Log.Debug("found service: {match} ", typeof(T));
                     return sv as T;
                 }
-                else
-                {
-                    Log.Debug("failed match: {match} ", sv);
-                }
-
             }
 
+            Log.Debug("failed to retrieve service: {match} ", typeof(T));
             // null or nothing
             return default(T);
         }

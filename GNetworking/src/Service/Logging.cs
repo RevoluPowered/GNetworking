@@ -50,7 +50,7 @@ namespace Core
         {
             if(loggingLevel == null)
             {
-                loggingLevel = new LoggingLevelSwitch( LogEventLevel.Information );
+                loggingLevel = new LoggingLevelSwitch( LogEventLevel.Debug );
             }
 
             Log.Logger = new LoggerConfiguration()
