@@ -16,14 +16,10 @@ namespace GameServer
             var server = GameServiceManager.RegisterService( new NetworkServer(27015, 20));
 
             // create chat system handler
-            var chatSystem = GameServiceManager.RegisterService(new ChatManager());
+            var chatSystem = GameServiceManager.RegisterService(new ServerChatManager());
 
             // start logging and network server service
             GameServiceManager.StartServices();
-
-            // register network messages which the server can handle
-            server.NetworkPipe.On("say", ChatManager.SayMessageReceived);
-
 
             // todo: remove requirement for base message to allow much more dynamic behaviour
 

@@ -18,7 +18,7 @@ namespace GNetworking
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public T GetMessage<T>() where T: BaseMessage
+        public T GetMessage<T>() where T: class
         {
             try
             {

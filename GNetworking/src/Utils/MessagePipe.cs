@@ -70,7 +70,7 @@ namespace GNetworking
         /// <param name="socket">the NetworkSocket context</param>
         /// <param name="message">the message to send</param>
         /// <returns>outgoing message</returns>
-        protected NetOutgoingMessage GenerateMessage<T>(NetPeer socket, string name, T message) where T: BaseMessage
+        protected NetOutgoingMessage GenerateMessage<T>(NetPeer socket, string name, T message)
         {
             Log.Information("message: {msg}", message);
             // return the net message 

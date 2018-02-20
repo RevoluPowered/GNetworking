@@ -43,7 +43,7 @@ namespace GNetworking
         /// <param name="name"></param>
         /// <param name="args"></param>
         /// <returns></returns>
-        public void Send<T>( string name, T message) where T: BaseMessage
+        public void Send<T>( string name, T message)
         {
             if(clientSocket == null)
             {
@@ -63,7 +63,7 @@ namespace GNetworking
         /// <param name="socket"></param>
         /// <param name="name"></param>
         /// <param name="args"></param>
-        public void SendReliable<T>( string name, T message ) where T: BaseMessage
+        public void SendReliable<T>( string name, T message )
         {
             if(clientSocket == null)
             {

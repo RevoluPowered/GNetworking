@@ -57,7 +57,7 @@ namespace GNetworking
         /// </summary>
         /// <param name="name"></param>
         /// <param name="args"></param>
-        public void SendReliable<T>( string name, T message) where T: BaseMessage
+        public void SendReliable<T>( string name, T message)
         {
             if(server_socket == null)
             {
@@ -76,7 +76,7 @@ namespace GNetworking
         /// </summary>
         /// <param name="name"></param>
         /// <param name="args"></param>
-        public void Send<T>( string name, T message) where T: BaseMessage
+        public void Send<T>( string name, T message)
         {
             if(server_socket == null)
             {
@@ -97,7 +97,7 @@ namespace GNetworking
         /// <param name="player_context"></param>
         /// <param name="name"></param>
         /// <param name="args"></param>
-        public void SendCapture<T>( int player_context, string name, T message ) where T: BaseMessage
+        public void SendCapture<T>( int player_context, string name, T message )
         {
             if(server_socket == null)
             {
@@ -125,7 +125,7 @@ namespace GNetworking
         /// </summary>
         /// <param name="name"></param>
         /// <param name="args"></param>
-        public void SendClient<T>( NetConnection client, string name, T message) where T: BaseMessage
+        public void SendClient<T>( NetConnection client, string name, T message)
         {
             if(server_socket == null)
             {
