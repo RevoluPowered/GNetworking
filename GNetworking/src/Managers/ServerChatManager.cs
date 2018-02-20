@@ -1,14 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 using Core.Service;
-using GNetworking.Data;
-using GNetworking.Messages;
 using Lidgren.Network;
 using RandomNameGeneratorLibrary;
 using Serilog;
+
+using GNetworking.Data;
+using GNetworking.Messages;
+
 
 namespace GNetworking.Managers
 {
@@ -23,7 +21,7 @@ namespace GNetworking.Managers
         {
             _globalChannel = new ChatChannel
             {
-                Name = "Global",
+                Name = "Main",
                 Participants = null, // Include everyone
             };
 
@@ -38,9 +36,6 @@ namespace GNetworking.Managers
             // connection handlers - mapping connections to user information
             _server.OnClientConnectionSuccessful += OnClientConnected;
             _server.OnClientDisconnected += OnClientDisconnected;
-
-
-
         }
 
         public void OnClientConnected(NetConnection client)
@@ -72,6 +67,7 @@ namespace GNetworking.Managers
             {
                 var user = Users[client];
                 Users.Remove(client);
+
                 Log.Information("Client has left the _server {user} on endpoint {connection}", user.Nickname, client);
             }
             else

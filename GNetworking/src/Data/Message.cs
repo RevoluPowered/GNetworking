@@ -9,6 +9,7 @@ namespace GNetworking.Data
     public class Message
     {
         public User User { get; set; }
+        public ChatChannel Channel { get; set; }
         public string Text { get; set; }
     }
 }
