@@ -24,6 +24,9 @@ namespace GameServer
             // register network messages which the server can handle
             server.NetworkPipe.On("say", ChatManager.SayMessageReceived);
 
+
+            // todo: remove requirement for base message to allow much more dynamic behaviour
+
             Thread server_thread = new Thread(UpdateServer);
             server_thread.Start();
 
