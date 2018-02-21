@@ -17,12 +17,13 @@ namespace GNetworking.Managers
         private readonly NetworkServer _server;
         private readonly PersonNameGenerator _nameGenerator;
         private readonly ChatChannel _globalChannel;
+
         public ServerChatManager() : base("chat service")
         {
             _globalChannel = new ChatChannel
             {
-                Name = "Main",
-                Participants = new List<User>(), // Include everyone
+                Name = "Global",
+                Participants = new List<User>(),
             };
 
             Channels.Add(_globalChannel);
@@ -38,18 +39,27 @@ namespace GNetworking.Managers
             _server.OnClientDisconnected += OnClientDisconnected;
         }
 
+        private ChatChannel GetChannelByName(string channel)
+        {
+            return Channels.SingleOrDefault(s => s.Name == channel);
+        }
+
         public void OnClientConnected(NetConnection client)
         {
             Log.Information("Client has conected {connection}", client);
 
             var user = new User(_nameGenerator.GenerateRandomFirstName());
-
+            
             Log.Information("Random name assigned to user {name}", user.Nickname);
-            Users.Add(user, client);
 
+            Users.Add(user, client);
+            
             var userInfo = new UserInfoMessage
             {
-                UserData = user
+                UserData = user,
+                ChatChannels = new List<ChatChannel> {
+                    _globalChannel
+                }
             };
 
             _globalChannel.Participants.Add(user);
@@ -74,7 +84,6 @@ namespace GNetworking.Managers
 
             if (user != null)
             {
-
                 if (Users.Remove(user))
                 {
                     Log.Information("Client has left the _server {user} on endpoint {connection}", user, client);
@@ -148,7 +157,12 @@ namespace GNetworking.Managers
             // todo: add other channel support
 
             // if channel is not supplied then it's for the global channel
-            var channel = chatMessage.Channel ?? _globalChannel;
+            var channel = GetChannelByName( chatMessage.ChannelName ) ?? _globalChannel;
+
+            if (channel == null)
+            {
+                Log.Error("Error channel not found");
+            }
 
             // add conversation message to history
             channel.Messages.Add(chatMessage);
@@ -159,7 +173,10 @@ namespace GNetworking.Managers
             // send message to all participants of the channel
             foreach (var user in channel.Participants)
             {
-                userConnections.Add(Users[user]);
+                if (Users.ContainsKey(user))
+                {
+                    userConnections.Add(Users[user]);
+                }
             }
 
             // send message to all clients
