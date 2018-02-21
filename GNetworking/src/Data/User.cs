@@ -1,4 +1,6 @@
-﻿namespace GNetworking.Data
+﻿using Lidgren.Network;
+
+namespace GNetworking.Data
 {
     public class User
     {

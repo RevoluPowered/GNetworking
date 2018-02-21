@@ -52,23 +52,42 @@ namespace GNetworking
             capture = _capture;
         }
 
-        /// <summary>
-        /// Send via Server to Client reliably
-        /// </summary>
-        /// <param name="name"></param>
-        /// <param name="args"></param>
-        public void SendReliable<T>( string name, T message)
+        private void SendFunction<T>(string name, T message, NetDeliveryMethod method, IList<NetConnection> connections = null)
         {
-            if(server_socket == null)
+            if (server_socket == null)
             {
                 Log.Error("Server: invalid NetworkSocket supplied!");
                 return;
             }
 
-            server_socket.SendToAll(
-                GenerateMessage<T>(server_socket, name, message),
-                NetDeliveryMethod.ReliableSequenced
-            );
+            if (connections == null)
+            {
+                server_socket.SendToAll(
+                    GenerateMessage<T>(server_socket, name, message),
+                    method
+                );
+            }
+            else
+            {
+                server_socket.SendMessage(
+                    GenerateMessage<T>(server_socket, name, message),
+                    connections,
+                    method,
+                    // todo: investigate why this is required?
+                    0
+                );
+            }
+
+        }
+
+        /// <summary>
+        /// Send via Server to Client reliably
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="args"></param>
+        public void SendReliable<T>( string name, T message, IList<NetConnection> connections = null)
+        {
+            SendFunction<T>(name, message, NetDeliveryMethod.ReliableSequenced, connections);
         }
 
         /// <summary>
@@ -76,48 +95,9 @@ namespace GNetworking
         /// </summary>
         /// <param name="name"></param>
         /// <param name="args"></param>
-        public void Send<T>( string name, T message)
+        public void Send<T>( string name, T message, IList<NetConnection> connections = null)
         {
-            if(server_socket == null)
-            {
-                Log.Error("Server: invalid NetworkSocket supplied!");
-                return;
-            }
-
-            server_socket.SendToAll(
-                GenerateMessage<T>(server_socket, name, message),
-                NetDeliveryMethod.UnreliableSequenced
-            );
-        }
-
-        /// <summary>
-        /// Send capture stores the message in context to a player
-        /// useful for spawn functions
-        /// </summary>
-        /// <param name="player_context"></param>
-        /// <param name="name"></param>
-        /// <param name="args"></param>
-        public void SendCapture<T>( int player_context, string name, T message )
-        {
-            if(server_socket == null)
-            {
-                Log.Error("Server: invalid NetworkSocket supplied!");
-                return;
-            }
-
-            if(capture != null)
-            {
-                capture.OnCall(player_context, name, message);
-            }
-            else
-            {
-                Log.Warning("buffer capture is disabled, messages won't be retransmitted to player on join!");
-            }
-
-            server_socket.SendToAll(
-                GenerateMessage<T>(server_socket, name, message),
-                NetDeliveryMethod.ReliableSequenced
-            );
+            SendFunction<T>(name, message, NetDeliveryMethod.UnreliableSequenced, connections );
         }
 
         /// <summary>
