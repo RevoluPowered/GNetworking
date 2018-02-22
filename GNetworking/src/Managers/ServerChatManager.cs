@@ -4,6 +4,8 @@ using Lidgren.Network;
 using RandomNameGeneratorLibrary;
 using Serilog;
 using System.Linq;
+using System.Runtime.Remoting.Messaging;
+using System.Text.RegularExpressions;
 using GNetworking.Data;
 using GNetworking.Messages;
 
@@ -17,7 +19,7 @@ namespace GNetworking.Managers
         private readonly NetworkServer _server;
         private readonly PersonNameGenerator _nameGenerator;
         private readonly ChatChannel _globalChannel;
-        private ChatChannel otherChannel;
+        private readonly ChatChannel _otherChannel;
         public ServerChatManager() : base("chat service")
         {
             _globalChannel = new ChatChannel
@@ -26,14 +28,14 @@ namespace GNetworking.Managers
                 Participants = new List<User>(),
             };
 
-            otherChannel = new ChatChannel
+            _otherChannel = new ChatChannel
             {
-                Name = "Another Channel",
+                Name = "Private",
                 Participants = new List<User>(),
             };
 
             Channels.Add(_globalChannel);
-            Channels.Add(otherChannel);
+            Channels.Add(_otherChannel);
 
             // random name generator
             _nameGenerator = new PersonNameGenerator();
@@ -66,11 +68,11 @@ namespace GNetworking.Managers
                 UserData = user,
                 ChatChannels = new List<ChatChannel> {
                     _globalChannel,
-                    otherChannel
+                    _otherChannel
                 }
             };
             
-            otherChannel.Participants.Add(user);
+            _otherChannel.Participants.Add(user);
             _globalChannel.Participants.Add(user);
 
             // send the client a message with their user data
@@ -97,7 +99,7 @@ namespace GNetworking.Managers
                 {
                     Log.Information("Client has left the _server {user} on endpoint {connection}", user, client);
                     _globalChannel.Participants.Remove(user);
-                    otherChannel.Participants.Remove(user);
+                    _otherChannel.Participants.Remove(user);
                 }
                 else
                 {
@@ -114,7 +116,7 @@ namespace GNetworking.Managers
         {
             // register network messages which the server can handle
             _server.NetworkPipe.On("say", SayMessageReceived);
-
+            _server.NetworkPipe.On("request-nickname-change", NicknameChangeRequest);
             // load database
         }
 
@@ -126,6 +128,63 @@ namespace GNetworking.Managers
         public override void Update()
         {
             // nothing to do here
+        }
+
+        /// <summary>
+        /// Clean the string - removes all special characters
+        /// </summary>
+        /// <param name="str"></param>
+        /// <returns></returns>
+        private string CleanString(string str)
+        {
+            // remove special chars
+            return Regex.Replace(str, "[^a-zA-Z0-9_.]+", "", RegexOptions.Compiled);
+        }
+
+        /// <summary>
+        /// Request nickname handler for client
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="sender"></param>
+        /// <param name="msg"></param>
+        /// <returns></returns>
+        public bool NicknameChangeRequest(string name, NetConnection sender, NetPipeMessage msg)
+        {
+            var message = msg.GetMessage<User>();
+            if (message != null)
+            {
+                var newNickname = CleanString(message.Nickname);
+
+                if (newNickname.Length > 3)
+                {
+                    var senderUser = GetUser(sender);
+                    var oldnickname = senderUser.Nickname;
+
+                    if(Users.SingleOrDefault(data => data.Key.Nickname == newNickname).Key != null)
+                    {
+                        Log.Information("Someone tried to change their username and it's already in use.");
+                        return false;
+                    }
+                    else
+                    {
+                        // update nickname
+                        senderUser.Nickname = newNickname;
+
+                        // tell client they have new nickname - only tell the exact client
+                        _server.NetworkPipe.SendClient(sender, "response-nickname-change", senderUser);
+
+                        Log.Information("user nickname changed from {oldname} to {nickname}", oldnickname, senderUser.Nickname);
+
+                    }
+                }
+                else
+                {
+                    Log.Information("Someone tried to change their username and it wasn't long enough.");
+                }
+
+                return false;
+            }
+            return true;
         }
 
         /// <summary>
