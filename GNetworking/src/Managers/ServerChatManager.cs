@@ -17,7 +17,7 @@ namespace GNetworking.Managers
         private readonly NetworkServer _server;
         private readonly PersonNameGenerator _nameGenerator;
         private readonly ChatChannel _globalChannel;
-
+        private ChatChannel otherChannel;
         public ServerChatManager() : base("chat service")
         {
             _globalChannel = new ChatChannel
@@ -26,7 +26,14 @@ namespace GNetworking.Managers
                 Participants = new List<User>(),
             };
 
+            otherChannel = new ChatChannel
+            {
+                Name = "Another Channel",
+                Participants = new List<User>(),
+            };
+
             Channels.Add(_globalChannel);
+            Channels.Add(otherChannel);
 
             // random name generator
             _nameGenerator = new PersonNameGenerator();
@@ -58,10 +65,12 @@ namespace GNetworking.Managers
             {
                 UserData = user,
                 ChatChannels = new List<ChatChannel> {
-                    _globalChannel
+                    _globalChannel,
+                    otherChannel
                 }
             };
-
+            
+            otherChannel.Participants.Add(user);
             _globalChannel.Participants.Add(user);
 
             // send the client a message with their user data
@@ -88,6 +97,7 @@ namespace GNetworking.Managers
                 {
                     Log.Information("Client has left the _server {user} on endpoint {connection}", user, client);
                     _globalChannel.Participants.Remove(user);
+                    otherChannel.Participants.Remove(user);
                 }
                 else
                 {
