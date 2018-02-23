@@ -62,6 +62,7 @@
     <Compile Include="src\Data\ChatChannel.cs" />
     <Compile Include="src\Data\Message.cs" />
     <Compile Include="src\Data\User.cs" />
+    <Compile Include="src\Data\UserChannelInvite.cs" />
     <Compile Include="src\Managers\ServerChatManager.cs" />
     <Compile Include="src\Messages\NetPipeMessage.cs" />
     <Compile Include="src\Messages\UserInfoMessage.cs" />

@@ -20,8 +20,7 @@ namespace GameServer
 
             // start logging and network server service
             GameServiceManager.StartServices();
-
-            // todo: remove requirement for base message to allow much more dynamic behaviour
+            
 
             Thread server_thread = new Thread(UpdateServer);
             server_thread.Start();

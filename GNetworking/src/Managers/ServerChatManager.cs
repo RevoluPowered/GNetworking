@@ -4,7 +4,6 @@ using Lidgren.Network;
 using RandomNameGeneratorLibrary;
 using Serilog;
 using System.Linq;
-using System.Runtime.Remoting.Messaging;
 using System.Text.RegularExpressions;
 using GNetworking.Data;
 using GNetworking.Messages;
@@ -19,7 +18,6 @@ namespace GNetworking.Managers
         private readonly NetworkServer _server;
         private readonly PersonNameGenerator _nameGenerator;
         private readonly ChatChannel _globalChannel;
-        private readonly ChatChannel _otherChannel;
         public ServerChatManager() : base("chat service")
         {
             _globalChannel = new ChatChannel
@@ -27,15 +25,8 @@ namespace GNetworking.Managers
                 Name = "Global",
                 Participants = new List<User>(),
             };
-
-            _otherChannel = new ChatChannel
-            {
-                Name = "Private",
-                Participants = new List<User>(),
-            };
-
+            
             Channels.Add(_globalChannel);
-            Channels.Add(_otherChannel);
 
             // random name generator
             _nameGenerator = new PersonNameGenerator();
@@ -63,20 +54,19 @@ namespace GNetworking.Managers
 
             Users.Add(user, client);
             
+            _globalChannel.Participants.Add(user);
+
             var userInfo = new UserInfoMessage
             {
                 UserData = user,
                 ChatChannels = new List<ChatChannel> {
-                    _globalChannel,
-                    _otherChannel
+                    _globalChannel
                 }
             };
-            
-            _otherChannel.Participants.Add(user);
-            _globalChannel.Participants.Add(user);
 
             // send the client a message with their user data
             _server.NetworkPipe.SendClient(client, "UserInfo", userInfo);
+            _server.NetworkPipe.SendReliable("ChannelUpdate", _globalChannel);
         }
 
         /// <summary>
@@ -89,6 +79,16 @@ namespace GNetworking.Managers
             return Users.SingleOrDefault(selector => selector.Value == connection).Key;
         }
 
+        /// <summary>
+        /// Get user by name
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public User GetuserByName(string name)
+        {
+            return Users.SingleOrDefault(selector => selector.Key.Nickname == name).Key;
+        }
+
         public void OnClientDisconnected(NetConnection client)
         {
             var user = GetUser(client);
@@ -98,8 +98,34 @@ namespace GNetworking.Managers
                 if (Users.Remove(user))
                 {
                     Log.Information("Client has left the _server {user} on endpoint {connection}", user, client);
-                    _globalChannel.Participants.Remove(user);
-                    _otherChannel.Participants.Remove(user);
+                   
+                    var deleteChannels = new List<ChatChannel>();
+                    foreach (var channel in Channels)
+                    {
+                        // find the participant by user
+                        var participantFind = channel.Participants.Find(u => u == user);
+                        if (participantFind != null)
+                        {
+                            // remove participant from the channel
+                            channel.Participants.Remove(participantFind);
+                            
+                            // queue for deletion if no users left in the group
+                            if (channel.Participants.Count == 0)
+                            {
+                                deleteChannels.Add(channel);
+                            }
+                            else // when the channel still has members update their online member count
+                            {
+                                _server.NetworkPipe.SendReliable("ChannelUpdate", channel, GetParticipantConnections(channel));
+                            }
+                        }
+                    }
+
+                    // remove channels which have no users in them
+                    foreach (var channel in deleteChannels)
+                    {
+                        Channels.Remove(channel);
+                    }
                 }
                 else
                 {
@@ -117,6 +143,8 @@ namespace GNetworking.Managers
             // register network messages which the server can handle
             _server.NetworkPipe.On("say", SayMessageReceived);
             _server.NetworkPipe.On("request-nickname-change", NicknameChangeRequest);
+            _server.NetworkPipe.On("request-new-group", RequestNewGroup);
+            _server.NetworkPipe.On("request-invite-user", RequestInviteUser);
             // load database
         }
 
@@ -139,6 +167,75 @@ namespace GNetworking.Managers
         {
             // remove special chars
             return Regex.Replace(str, "[^a-zA-Z0-9_.]+", "", RegexOptions.Compiled);
+        }
+
+        private List<NetConnection> GetParticipantConnections( ChatChannel channel )
+        {
+            var connections = new List<NetConnection>();
+            foreach (var participant in channel.Participants)
+            {
+                connections.Add(Users[participant]);
+            }
+
+            return connections;
+        }
+
+        public bool RequestInviteUser(string name, NetConnection sender, NetPipeMessage msg)
+        {
+            var invite = msg.GetMessage<UserChannelInvite>();
+
+            if (invite != null)
+            {
+                Log.Information("Processing channel invite {channel} nickname {nickname}", invite.ChannelName, invite.Nickname);
+
+                var user = GetuserByName(invite.Nickname);
+                var channel = GetChannelByName(invite.ChannelName);
+
+                if (user != null && channel != null)
+                {
+                    Log.Information("Channel found {channel}, and user found too {user}", channel.Name, user.Nickname);
+                    channel.Participants.Add(user);
+                    
+                    // send all the members of the channel an update with the new member
+                    _server.NetworkPipe.SendReliable( "ChannelUpdate", channel, GetParticipantConnections(channel));
+                }
+                else
+                {
+                    Log.Error("Failed to find channel or user {invite}", invite);
+                }
+            }
+
+            return false;
+        }
+
+        public bool RequestNewGroup(string name, NetConnection sender, NetPipeMessage msg)
+        {
+            var channel = msg.GetMessage<ChatChannel>();
+
+            if (channel != null)
+            {
+                Log.Information("New group requested: {name}", channel.Name);
+                // make sure channel doesn't already exist
+                if (GetChannelByName(channel.Name) == null)
+                {
+                    Channels.Add(channel);
+                    channel.Participants = new List<User>
+                    {
+                        GetUser(sender)
+                    };
+                    // add this user to the channel
+                    _server.NetworkPipe.SendClient(sender, "ChannelUpdate", channel);
+                    Log.Information("Group creation completed: {name}", channel.Name);
+                }
+                else
+                {
+                    Log.Information("Group already exists error {name}", channel.Name);
+                    // channel can't be made it already exists.
+                    // notify("channel can't be created already exists, try another name")
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -172,6 +269,7 @@ namespace GNetworking.Managers
 
                         // tell client they have new nickname - only tell the exact client
                         _server.NetworkPipe.SendClient(sender, "response-nickname-change", senderUser);
+                        _server.NetworkPipe.SendReliable("ChannelUpdate", _globalChannel);
 
                         Log.Information("user nickname changed from {oldname} to {nickname}", oldnickname, senderUser.Nickname);
 
