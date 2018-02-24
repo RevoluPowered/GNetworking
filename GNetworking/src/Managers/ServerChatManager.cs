@@ -97,7 +97,7 @@ namespace GNetworking.Managers
             {
                 if (Users.Remove(user))
                 {
-                    Log.Information("Client has left the _server {user} on endpoint {connection}", user, client);
+                    Log.Information("Client has left the server {user} on endpoint {connection}", user.Nickname, client.RemoteEndPoint.Address);
                    
                     var deleteChannels = new List<ChatChannel>();
                     foreach (var channel in Channels)
@@ -108,13 +108,14 @@ namespace GNetworking.Managers
                         {
                             // remove participant from the channel
                             channel.Participants.Remove(participantFind);
-                            
+
                             // queue for deletion if no users left in the group
-                            if (channel.Participants.Count == 0)
+                            // we can't delete the global channel
+                            if (channel != _globalChannel && channel.Participants.Count == 0)
                             {
                                 deleteChannels.Add(channel);
                             }
-                            else // when the channel still has members update their online member count
+                            else if(channel.Participants.Count > 0) // when the channel still has members update their online member count
                             {
                                 _server.NetworkPipe.SendReliable("ChannelUpdate", channel, GetParticipantConnections(channel));
                             }
