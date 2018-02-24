@@ -39,9 +39,24 @@ namespace GNetworking.Managers
             _server.OnClientDisconnected += OnClientDisconnected;
         }
 
+        /// <summary>
+        /// Get Channel by name
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <returns></returns>
         private ChatChannel GetChannelByName(string channel)
         {
             return Channels.SingleOrDefault(s => s.Name == channel);
+        }
+
+        /// <summary>
+        /// Get all the channels this user is a member of
+        /// </summary>
+        /// <param name="user"></param>
+        /// <returns></returns>
+        private List<ChatChannel> GetChannelByUser(User user)
+        {
+            return Channels.FindAll(channel => channel.Participants.Contains(user));
         }
 
         public void OnClientConnected(NetConnection client)
@@ -170,12 +185,20 @@ namespace GNetworking.Managers
             return Regex.Replace(str, "[^a-zA-Z0-9_.]+", "", RegexOptions.Compiled);
         }
 
+        /// <summary>
+        /// Get channel participant connections, for sending data explicitly to those clients.
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <returns></returns>
         private List<NetConnection> GetParticipantConnections( ChatChannel channel )
         {
             var connections = new List<NetConnection>();
             foreach (var participant in channel.Participants)
             {
-                connections.Add(Users[participant]);
+                if (Users.ContainsKey(participant))
+                {
+                    connections.Add(Users[participant]);
+                }
             }
 
             return connections;
@@ -192,6 +215,25 @@ namespace GNetworking.Managers
                 var user = GetuserByName(invite.Nickname);
                 var channel = GetChannelByName(invite.ChannelName);
 
+                if (channel.Participants.Contains(user))
+                {
+                    // tell client that this user is already in this group
+                    _server.NetworkPipe.SendClient(sender, "OnServerNotification", new Message
+                    {
+                        Text = "Sorry, you can't add a user to the same group twice."
+                    });
+                    return false;
+                }
+
+                if (channel == _globalChannel)
+                {
+                    _server.NetworkPipe.SendClient(sender, "OnServerNotification", new Message
+                    {
+                        Text = "Sorry, you can't invite users to the global channel."
+                    });
+                    return false;
+                }
+
                 if (user != null && channel != null)
                 {
                     Log.Information("Channel found {channel}, and user found too {user}", channel.Name, user.Nickname);
@@ -199,6 +241,12 @@ namespace GNetworking.Managers
                     
                     // send all the members of the channel an update with the new member
                     _server.NetworkPipe.SendReliable( "ChannelUpdate", channel, GetParticipantConnections(channel));
+
+                    // tell client that this user is already in this group
+                    _server.NetworkPipe.SendClient(sender, "OnServerNotification", new Message
+                    {
+                        Text = "New user added to the group: " + user.Nickname
+                    });
                 }
                 else
                 {
@@ -227,9 +275,20 @@ namespace GNetworking.Managers
                     // add this user to the channel
                     _server.NetworkPipe.SendClient(sender, "ChannelUpdate", channel);
                     Log.Information("Group creation completed: {name}", channel.Name);
+
+                    // tell client we created the group, and tell them what to do.
+                    _server.NetworkPipe.SendClient(sender, "OnServerNotification", new Message
+                    {
+                        Text = channel.Name + " <b>group created</b>, it's now in the tabs at the top, click on it! then /invite anotherusername to invite users to your group."
+                    });
                 }
                 else
                 {
+                    // tell client we couldn't make a group with that name
+                    _server.NetworkPipe.SendClient(sender, "OnServerNotification", new Message
+                    {
+                        Text = "Sorry a group with that name already exists " + channel.Name
+                    });
                     Log.Information("Group already exists error {name}", channel.Name);
                     // channel can't be made it already exists.
                     // notify("channel can't be created already exists, try another name")
@@ -269,8 +328,18 @@ namespace GNetworking.Managers
                         senderUser.Nickname = newNickname;
 
                         // tell client they have new nickname - only tell the exact client
-                        _server.NetworkPipe.SendClient(sender, "response-nickname-change", senderUser);
-                        _server.NetworkPipe.SendReliable("ChannelUpdate", _globalChannel);
+                        _server.NetworkPipe.SendClient(sender, "OnServerNotification", new Message
+                        {
+                            Text = "Nickname changed to " + senderUser.Nickname
+                        });
+
+                        var channels = GetChannelByUser(senderUser);
+
+                        // update all channels with the new nickname
+                        foreach (var channel in channels)
+                        {
+                            _server.NetworkPipe.SendReliable("ChannelUpdate", channel);
+                        }
 
                         Log.Information("user nickname changed from {oldname} to {nickname}", oldnickname, senderUser.Nickname);
 
@@ -278,6 +347,11 @@ namespace GNetworking.Managers
                 }
                 else
                 {
+                    // tell client they have new nickname - only tell the exact client
+                    _server.NetworkPipe.SendClient(sender, "OnServerNotification", new Message
+                    {
+                        Text = "Sorry the new nickname is not long enough"
+                    });
                     Log.Information("Someone tried to change their username and it wasn't long enough.");
                 }
 
