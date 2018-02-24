@@ -82,7 +82,7 @@ namespace GNetworking
 
             NetworkSocket = null;
             NetConfiguration = null;
-            NetworkSocket = null;
+            MessagePipe = null;
         }
 
         public void Dispose()

@@ -45,28 +45,33 @@ namespace GameServer
             GameServiceManager.Shutdown();
         }
 
+        /// <summary>
+        /// close server flag for thread
+        /// </summary>
         public static object close_server = false;
+
+        /// <summary>
+        /// Update server thread
+        /// </summary>
         public static void UpdateServer()
         {
+            bool server_close = (bool) close_server;
 
             // wait until exit recieved from other thread
-            while (true)
+            while (!server_close)
             {
                 GameServiceManager.UpdateServices();
 
                 // wait 
                 System.Threading.Thread.Sleep(1000 / 60);
 
-                // prevent deadlocking
+                // update close status
                 lock (close_server)
                 {
-                    if ((bool)close_server)
-                    {
-                        break;
-                    }
+                    server_close = (bool) close_server;
                 }
-            }
 
+            }
         }
     }
 }
