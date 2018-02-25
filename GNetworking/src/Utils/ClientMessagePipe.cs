@@ -25,10 +25,12 @@ namespace GNetworking
         /// <param name="_logger"></param>
         /// <param name="clientSocket"></param>
         /// <returns></returns>
-        public ClientMessagePipe( NetClient clientSocket ) : base()
+        public ClientMessagePipe( NetClient clientSocket ) : base( clientSocket )
         {
             this.clientSocket = clientSocket;
         }
+
+
 
         /// <summary>
         /// Reference to the Client NetworkSocket
@@ -50,7 +52,7 @@ namespace GNetworking
                 Log.Error("Client: invalid NetworkSocket supplied!");
                 return;
             }
-            
+
             clientSocket.SendMessage(
                 GenerateMessage<T>(clientSocket, name, message),
                 NetDeliveryMethod.UnreliableSequenced

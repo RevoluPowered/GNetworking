@@ -31,7 +31,7 @@ namespace GNetworking
         /// <param name="_logger"></param>
         /// <param name="_server_socket"></param>
         /// <returns></returns>
-        public ServerMessagePipe( NetServer _server_socket ) : base()
+        public ServerMessagePipe( NetServer _server_socket ) : base(_server_socket)
         {
             server_socket = _server_socket;
         }

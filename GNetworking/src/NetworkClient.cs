@@ -158,15 +158,13 @@ namespace GNetworking
                     break;
 
                 case NetIncomingMessageType.Data:
-                    string packet = message.ReadString();
-
                     try
                     {
-                        pipe.Receive(packet, message.SenderConnection);
+                        pipe.Receive(message);
                     }
                     catch (System.Exception e)
                     {
-                        Log.Error("Exception: {e} with packet data: {packet}", e, packet);
+                        Log.Error("Exception: {e}", e);
                     }
                     break;
 
