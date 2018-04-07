@@ -3,6 +3,8 @@
 // No warantee is provided with this code, and no liability shall be granted under any circumstances.
 // All rights reserved GORDONITE LTD 2018 � Gordon Alexander MacPherson.
 
+using System.Linq;
+
 namespace Core.Service
 {
     using System;
@@ -26,9 +28,13 @@ namespace Core.Service
         /// <param name="service">The service which needs added</param>
         public static T RegisterService<T>(T service) where T: GameService
         {
-            if (Services.Contains(service))
+            // sanity check it isn't already registered
+            var exists = Services.SingleOrDefault(s => s.GetType() == service.GetType());
+
+            if (exists != null || Services.Contains(service))
             {
-                throw new Exception("Service already registered: " + service.Name);
+                Log.Error("You can't add a dulplicate service, ignoring - instance thrown away, returning existing copy!");
+                return (T) exists;
             }
             else
             {
@@ -70,7 +76,8 @@ namespace Core.Service
         /// </summary>
         public static void UpdateServices()
         {
-            foreach (var service in Services)
+            // only update activated services
+            foreach (var service in Services.FindAll(s => s.Status))
             {
                 service.Update();
             }
@@ -91,14 +98,27 @@ namespace Core.Service
 
                 if (start)
                 {
-                    service.Start();
+                    // if the service is not started start it
+                    if (!service.Status)
+                    {
+                        service.Start();
+                        service.Status = true;
+                        return true;
+                    }
                 }
                 else
                 {
-                    service.Stop();
+                    // make sure the service has been started
+                    if (service.Status)
+                    {
+                        service.Stop();
+                        service.Status = false;
+                        return true;
+                    }
                 }
 
-                return true;
+                Log.Error("Service {name} cannot be started or stopped, state is {status} and request was to change it to {start}", name, service.Status, start);
+                return false;
 
             }
 
@@ -130,11 +150,13 @@ namespace Core.Service
         /// </summary>
         public static void StartServices()
         {
-            foreach (var service in Services)
+            // start all non started services
+            foreach (var service in Services.FindAll(s => !s.Status))
             {
                 try
                 {
                     service.Start();
+                    service.Status = true;
                 }
                 catch (Exception e)
                 {
@@ -148,11 +170,12 @@ namespace Core.Service
         /// </summary>
         public static void StopServices()
         {
-            foreach (var service in Services)
+            foreach (var service in Services.FindAll(s => s.Status))
             {
                 try
                 {
                     service.Stop();
+                    service.Status = false;
                 }
                 catch (Exception e)
                 {

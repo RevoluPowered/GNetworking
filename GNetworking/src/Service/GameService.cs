@@ -24,6 +24,11 @@ namespace Core.Service
         }
 
         /// <summary>
+        /// Service status
+        /// </summary>
+        public bool Status { get; set; }
+
+        /// <summary>
         /// Auto start service when registered?
         /// </summary>
         public bool AutoStart { get; private set; }
